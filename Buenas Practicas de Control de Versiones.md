@@ -5,8 +5,16 @@
   - Detallando caracteristicas y requerimientos principales
 
 - Cada versión importante se documente
-  - Num de versión ✅
-  - Cambios del FW ✅
+  - Num de versión. Usando Tags de git. Los tags en github se usan con la sintaxis
+  > git tag nombreVersión Ejemplo: git tag v0.1-Beta1, git tag v0.1.1, git tag 0.1
+
+  - Para crear y subir el tag se usa:  
+  > git tag vX.X-caracteristica \
+    git push --tags
+  
+  - Para crear los releases se accede a la pestaña release de GitHub y se selecciona el tag desde el cual se va a crear el release.
+  Los cambios se van documentando en el checklist en la sección de descripción y debe concordar con los commits que se hagan en git y github.
+  - Cambios del FW. Cuando el programa ya ha sido probado y se decida que esta listo para producció se usará la sección de release de github para documentar los cambios realizados.
   - Pruebas realizadas (Checklist ❓)
   - Fecha de realización ✅
   - Tarjetas asociadas ✅
