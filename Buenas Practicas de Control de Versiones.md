@@ -12,6 +12,9 @@
   > git tag vX.X-caracteristica \
     git push --tags
   
+  - Para eliminar un tag se usa
+  > git tag --delete Nombre_de_la_etiqueta
+  
   - Para crear los releases se accede a la pestaña release de GitHub y se selecciona el tag desde el cual se va a crear el release.
   Los cambios se van documentando en el checklist en la sección de descripción y debe concordar con los commits que se hagan en git y github.
   - Cambios del FW. Cuando el programa ya ha sido probado y se decida que esta listo para producció se usará la sección de release de github para documentar los cambios realizados.
