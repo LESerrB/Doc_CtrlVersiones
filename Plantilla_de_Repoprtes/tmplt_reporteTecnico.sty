@@ -1,0 +1,94 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{template}[2026/04/11 Plantilla reporte tecnico]
+
+% -------- PAQUETES --------
+\RequirePackage[spanish]{babel}
+\RequirePackage[utf8]{inputenc}
+\RequirePackage[T1]{fontenc}
+\RequirePackage[a4paper, margin=2.0cm]{geometry}
+\RequirePackage{fancyhdr}
+\RequirePackage{lastpage}
+\RequirePackage{datetime}
+\RequirePackage{titlesec}
+\RequirePackage{multicol}
+\RequirePackage{hyperref}
+\RequirePackage{hyperxmp}
+
+% -------- VARIABLES CONFIGURABLES --------
+\newcommand{\doccodigo}{AN1120}
+\newcommand{\docautor}{Autor}
+\newcommand{\docversion}{v1.0}
+\newcommand{\docfecha}{\today}
+\newcommand{\doctitulo}{Título del Reporte Técnico}
+\newcommand{\docempresa}{Empresa}
+\newcommand{\doccopyright}{Uso interno}
+
+% -------- FECHA SOLO MES/AÑO --------
+\newdateformat{monthyear}{\monthname[\THEMONTH] \THEYEAR}
+\renewcommand{\docfecha}{\monthyear\today}
+
+% -------- METADATOS PDF (hyperxmp) --------
+\hypersetup{
+    pdfauthor={\docautor},
+    pdftitle={\doctitulo},
+    pdfsubject={Documento Técnico},
+    pdfkeywords={reporte, tecnico, firmware},
+}
+
+\setlength{\headheight}{20pt}
+\setlength{\headsep}{8pt}
+
+% -------- ENCABEZADO Y PIE --------
+\pagestyle{fancy}
+\fancyhf{}
+
+% Encabezado (doble línea)
+\renewcommand{\headrule}{
+  \vspace{0pt}
+  \hrule height 1.5pt
+  \vspace{1.2pt}
+  \hrule height 0.5pt
+  \vspace{2pt}
+}
+
+\fancyhead[R]{\textbf{\doccodigo\ \docversion}}
+
+% Pie (doble línea invertida)
+\renewcommand{\footrule}{
+  \vspace{0pt}
+  \hrule height 0.5pt
+  \vspace{1pt}
+  \hrule height 1.5pt
+  \vspace{2pt}
+}
+
+\fancyfoot[L]{Autor: \docautor \\ \docfecha}
+\fancyfoot[R]{Pag \thepage\ de \pageref{LastPage}}
+
+% -------- FORMATO DE SECCIONES --------
+\titleformat{\section}
+  {\normalfont\large\bfseries}
+  {\thesection}{1em}{}
+
+% -------- COMANDO PARA TÍTULO --------
+\newcommand{\makedoctitle}{
+    \begin{center}
+        {\Large \textbf{\doctitulo}}\\
+        \vspace{4pt}
+    \end{center}
+    \vspace{-10pt}
+}
+
+% -------- ENTORNO PARA COLUMNAS --------
+\newenvironment{twocolsection}
+{\begin{multicols}{2}}
+{\end{multicols}}
+
+% -------- DISCLAIMER (ANTI USO AUTOMATIZADO) --------
+\newcommand{\docdisclaimer}{
+\begin{center}
+\small
+\textit{Este documento está destinado para revisión humana. 
+La interpretación automática mediante herramientas externas puede omitir contexto técnico relevante.}
+\end{center}
+}
