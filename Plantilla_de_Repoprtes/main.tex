@@ -1,22 +1,263 @@
 \documentclass[12pt,a4paper]{article}
 
 \usepackage{tmplt_reporteTecnico}
-\usepackage{lipsum}
+\usepackage{booktabs}
+\usepackage{cleveref}
+\usepackage{pdfpages}
 
 % -------- CONFIGURACIÓN --------
 \renewcommand{\docautor}{Luis Esteban Serrano Bermúdez}
-\renewcommand{\doccodigo}{AN1120}
+\renewcommand{\doccodigo}{Comunicación UART Verdin}
 \renewcommand{\docversion}{v0.1}
-\renewcommand{\doctitulo}{Reporte Técnico}
+\renewcommand{\doctitulo}{Reporte Técnico de comunicación de Tarjetas}
 
-\begin{document}
-    
+\begin{document}    
     \makedoctitle
     \thispagestyle{fancy}
     
     \section{Introducción}
     \begin{twocolsection}
-        \lipsum[1-3]
+        El siguiente reporte busca mostrar y analizar las tramas de comunicación presentes entre las tarjetas de báscula (AT13\_EN\_BAS), y las nuevas tarjetas de control de sensores y los actuadores de posición del sistema y el sistema embebido verdin iMX8MP a traves de la comunicación UART.
+        
+        En la tabla \ref{tab:uart_config} se muestra la configuración necesaria en la tarjeta verdin usando la biblioteca pyserial.
+        \rightcolumn{
+            \begin{inlinetable}
+                \caption{Configuración UART}
+                \label{tab:uart_config}
+                \begin{tabular}{ll}
+                \toprule
+                Parámetro & Valor \\
+                \midrule
+                Tarjeta Báscula & UART1 \\
+                Tarjeta Sensores & UART2 \\
+                Tarjeta Actuadores & UART4 \\
+                Baud Rate             & 57600 \\
+                Tamaño de byte        & 8     \\
+                Byte de Paridad       & No    \\
+                Byte de paro          & 1     \\
+                Tiempo de espera (s)  & 1 \\
+                \bottomrule
+                \end{tabular}
+            \end{inlinetable}
+        }
     \end{twocolsection}
-    
+
+    \section{Comunicación}
+    \begin{twocolsection}
+        La trama sugerida para la comunicación es construida a partir de datos enviados a la tarjeta (AT13\_EN\_BAS) y los datos que envía de regreo con el pesaje de las celdas. Esta estructura se propone como base para las demás tarjetas cambiando los parámetros que requiere cada tarjeta.
+
+        \subsection{Construcción de la trama de tarjeta de báscula}
+        Los elementos siguientes son propuestos para poder comunicar con la tarjeta de báscula, permitiendo tener una comunicación confiable y evitando tener un error en el intercambio de información.
+            \begin{itemize}
+              \item Cabecera (Header): Dato hexadecimal que indica el inicio de la comunicación [0x00]. 
+              \item Tamaño del Dato (LNG): Longitud de la cantidad de los datos transmitidos desde la tarjeta.
+              \item Datos de Báscula (Dt): Cantidad de datos enviados desde la báscula en hexadecimal, son dados por el valor hexadecimal [LNG].
+              \item CRC: Valor hexadecimal de checksum para detectar errores de transmisión. Se usan 2 bytes ya que el resultado es un valor hexadecimal de 4 dígitos [CRC MSB, CRC LSB].
+              \item Cola (Tail): Dato hexadecimal que indica el final de la trama de comunicación [0x99].
+            \end{itemize}
+    \end{twocolsection}
+
+        \subsubsection{Trama}
+            \textbf{\normalsize{Envío}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{Header, LNG, Dt, CRC MSB, CRC MSB, Tail}
+                    \end{tikzpicture}
+                \end{center}
+        
+                Ejemplo:
+                
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{0x00, 0x01, 0x55, 0x3F, 0xC0, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+                
+                En este caso de acuerdo a la posición, el dato LNG muestra un ``0x01'' indicando que se enviará un par de bytes de datos ``0x55'' que indica que se solicitará la información del pesaje, posteriormente se mandan dos pares de bytes correspondientes al cálculo de CRC que se usarán para verificar la consistencia de los datos en la comunicación ``0x3F'' y ``0xC0''.
+        
+            \textbf{\normalsize{Recepción}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{Header, LNG, Dt, CRC, Tail}
+                    \end{tikzpicture}
+                \end{center}
+            
+                Ejemplo:
+            
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{0x00, 0x02, 0xB9, 0x9A, 0x24, 0xA2, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+        
+                En el caso de la recepción se usa la misma estructura, el ``0x02'' indica dos datos ``0xB9'' y ``0x9A'' y su respectivos datos de CRC ``0x24, 0xA2''.
+        
+        \begin{twocolsection}
+            \subsection{Construcción de la trama de tarjeta de sensores}
+            De acuerdo a los dispositivos los elementos siguientes son necesarios para la construcción de la trama del dato:
+
+            \begin{itemize}
+                \item Sonda Principal Temperatura: Información de la sonda principal de temperatura [SndaPrnTmp MSB, SndaPrnTmp LSB].
+                \item Sonda Aux Temperatura: Información de la sonda auxiliar de temperatura [SndaAuxTmp MSB, SndaAuxTmp LSB].
+                \item Potencia de Calefactor: Dato de control de la potencia del calefactor [PotCalef MSB, PotCalef LSB].
+                \item Control Temperatura: Dato de control de la temperatura programada [CtrlTmp MSB, CtrlTmp LSB].
+                \item Control Humedad: Dato de control del humidificador [CtrlHum MSB, CtrlHum LSB].
+                \item Control Oxigeno: Dato de control de Oxigeno [CtrlOx MSB, CtrlOx LSB]
+                \item Sensor de Oxigeno: Dato del sensor de Oxígeno [SnsrOx MSB, SnsrOx LSB]
+            \end{itemize}
+
+            Considerando que los datos de Cabecera, Tamaño del dato, CRC y Cola se mantienen presentes.
+        \end{twocolsection}
+
+        \subsubsection{Trama}
+            \textbf{\normalsize{Envío}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{Header, LNG, Dt, CRC MSB, CRC MSB, Tail}
+                    \end{tikzpicture}
+                \end{center}
+
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Dt:}{SndaPrnTmp MSB, SndaPrnTmp LSB, SndaAuxTmp MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{SndaAuxTmp LSB, PotCalef MSB, PotCalef LSB, CtrlTmp MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{CtrlTmp LSB, CtrlHum MSB, CtrlHum LSB, CtrlOx MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{CtrlOx LSB, SnsrOx MSB, SnsrOx LSB}
+                    \end{tikzpicture}
+                \end{center}
+        
+                Ejemplo:
+                
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{0x00, 0x01, 0x66, 0x3F, 0xC0, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+                
+                Al ser una cantidad mayor de datos los que se van a comunicar se propone llenar los espacios faltantes con ``0x00'' para evitar confusiones en la lectura de datos.
+        
+            \textbf{\normalsize{Recepción}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{Header, LNG, Dt, CRC, Tail}
+                    \end{tikzpicture}
+                \end{center}
+
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Dt:}{SndaPrnTmp MSB, SndaPrnTmp LSB, SndaAuxTmp MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{SndaAuxTmp LSB, PotCalef MSB, PotCalef LSB, CtrlTmp MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{CtrlTmp LSB, CtrlHum MSB, CtrlHum LSB, CtrlOx MSB}
+                    \end{tikzpicture}
+
+                    \begin{tikzpicture}
+                        \drawbus{}{CtrlOx LSB, SnsrOx MSB, SnsrOx LSB}
+                    \end{tikzpicture}
+                \end{center}
+            
+                Ejemplo:
+            
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{0x00, 0x08, 0x9B, 0xA9, 0xC5, 0x6B, 0x24, 0xA2, 0x33, 0x10, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+        
+                En este caso se transmiten 8 pares de bytes los cuales corresponderían a los datos solicitados por la tarjeta verdin (Tx) y la posición sería determinada por la construcción de la trama y la solicitud de los datos, es decir, la sonda principal de la temperatura siempre va a estar al inicio y la potencia del calefactor estaría antes del control de Oxígeno.
+
+                \begin{twocolsection}
+            \subsection{Construcción de la trama de tarjeta de actuadores de posición}
+            El control de los actuadores es un proceso más sencillo al solo necesitar mantener un dato constante mientras se presiona una tecla o se activa con un disparo de un botón, por lo que se proponen los siguientes datos:
+
+            \begin{itemize}
+                \item 00 - Reposo
+                \item 01 - Subir AV
+                \item 10 - Bajar AV
+                \item 11 - Cambio de Modo
+            \end{itemize}
+
+            Considerando que los datos de Cabecera, Tamaño del dato, CRC y Cola se mantienen presentes.
+        \end{twocolsection}
+
+        \subsubsection{Trama}
+            \textbf{\normalsize{Envío}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{Header, LNG, Dt, CRC MSB, CRC MSB, Tail}
+                    \end{tikzpicture}
+                \end{center}
+        
+                Ejemplo:
+                
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Tx:}{0x00, 0x01, 0x11, 0x3F, 0xC0, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+                
+                Esta tarjeta solo requiere un solo dato de transmisión a la vez por lo que solo se necesita un par de bytes a la vez.
+        
+            \textbf{\normalsize{Recepción}}
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{Header, LNG, Dt, CRC, Tail}
+                    \end{tikzpicture}
+                \end{center}
+
+                Ejemplo:
+            
+                \begin{center}
+                    \begin{tikzpicture}
+                        \drawbus{Rx:}{0x00, 0x01, 0x00, 0x33, 0x10, 0x99}
+                    \end{tikzpicture}
+                \end{center}
+        
+                Aún no se propone si habrá retroalimetación de parte de la tarjeta de control de la Altura Variable.
+        
+        \begin{twocolsection}
+            \subsection{Comunicación Botonera}
+            El control GPIO de los botones no se tiene completamente diseñado y solo esta presente el encoder para controlar la potencia del calefactor, el valor de la temperatura programada y de las luces de examinación y fototerapia. Pines usados:
+
+            \begin{itemize}
+                \item Dt: Dato del encoder, funciona para saber el sentido de la dirección del giro.
+                \item CLK: Reloj del encoder, funciona para saber el sentido de la dirección del giro.
+                \item SW: Botón del encoder.
+            \end{itemize}
+
+            Todos los pines usados son de entrada (input) ya que el CLK y Dt dependiendo del sentido del giro, Dt genera un pulso adelantado o atrasado con respecto a CLK y permite ser usado como incremento o disminución del valor seleccionado. SW funciona como un botón común que genera un pulso que es leído por la tarjeta.
+        \end{twocolsection}
+
+        \begin{inlinetable}
+                \caption{GPIO}
+                \label{tab:uart_config}
+                \begin{tabular}{ll}
+                \toprule
+                Pin Encoder & Nombre Pin Tarjeta Verdin \\
+                \midrule
+                Dt   & X19.1 – CAN\_2\_TX \\
+                CLK  & X19.2 – CAN\_2\_RX     \\
+                SW   & X19.4 – QSPI\_1\_CLK    \\
+                \bottomrule
+                \end{tabular}
+            \end{inlinetable}
+
+    \includepdf[pages=-]{PINOUT_Verdin.pdf}
+
+    \newpage
+    \section{Observaciones}
 \end{document}

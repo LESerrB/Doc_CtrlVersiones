@@ -13,6 +13,11 @@
 \RequirePackage{multicol}
 \RequirePackage{hyperref}
 \RequirePackage{hyperxmp}
+\RequirePackage{caption}
+\RequirePackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{positioning}
+\RequirePackage{tikz-timing}
 
 % -------- VARIABLES CONFIGURABLES --------
 \newcommand{\doccodigo}{AN1120}
@@ -83,6 +88,56 @@
 \newenvironment{twocolsection}
 {\begin{multicols}{2}}
 {\end{multicols}}
+
+\newenvironment{inlinetable}{
+\begin{center}
+\captionsetup{type=table}
+}{
+\end{center}
+}
+\newcommand{\rightcolumn}[1]{
+    \columnbreak
+    #1
+}
+
+% -------- BLOQUE DE DATO --------
+\newcommand{\hexblock}[2]{
+\node[
+    draw,
+    trapezium,
+    trapezium left angle=75,
+    trapezium right angle=105,
+    minimum height=0.6cm,
+    minimum width=0.8cm,
+    inner sep=2pt,
+    text height=1.5ex,
+    text depth=0.25ex,
+    align=center
+] at (#1,0) {#2};
+}
+
+\newcommand{\drawbus}[2]{
+\node (start) at (0,0) {};
+\node[left] at (start) {#1};
+
+\def\prev{start}
+
+\foreach \val in {#2} {
+    \node[
+        draw,
+        trapezium,
+        trapezium left angle=75,
+        trapezium right angle=105,
+        minimum height=0.6cm,
+        inner sep=2pt,
+        text height=1.5ex,
+        text depth=0.25ex,
+        right=0pt of \prev
+    ] (block) {\val};
+    
+    \xdef\prev{block}
+}
+}
 
 % -------- DISCLAIMER (ANTI USO AUTOMATIZADO) --------
 \newcommand{\docdisclaimer}{
